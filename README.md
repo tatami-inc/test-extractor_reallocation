@@ -58,10 +58,17 @@ Testing a 200 x 100000 matrix
 |      401,185,430.00 |                2.49 |    0.1% |      4.42 | `reallocated`
 ```
 
-Frankly, this is a relief, as we don't have to drag allocations around the place to squeeze out more performance.
-Doing so would be an absolute pain for multi-threaded processes where each thread needs its own copy of everything.
-A `tatami::OracularExtractor` instance can't be re-used anyway once its predictions have been consumed,
-so any re-use strategy would need to switch to `MyopicExtractor`s, which may incur an even greater performance penalty.
+Frankly, this is a relief, as we don't have to drag existing allocations around the place to squeeze out more performance.
+
+- Obviously this is not nice design as the internals of a **tatami**-based function now spill out into the caller.
+  Everything would need to accept an extra `Workspace` class to enable memory re-use, which is a little awkward.
+- It would increase total memory usage because the allocations can't be easily repurposed in between the **tatami** operations. 
+  Any intervening allocation requests would use extra memory on top of the persisted extractors/buffers.
+- A `tatami::OracularExtractor` instance can't be re-used anyway once its predictions have been consumed.
+  Any re-use strategy would need to switch to `MyopicExtractor`s, which may incur an even greater performance penalty.
+
+This is particularly tedious for multi-threaded scenarios where each thread needs its own copy of everything to avoid false sharing.
+Indeed, if the number of threads changes across calls, we end up having to reallocate again.
 
 ## Build instructions
 
